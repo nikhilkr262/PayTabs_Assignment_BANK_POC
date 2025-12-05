@@ -81,10 +81,6 @@ Usage Instructions
     -   Login as `admin`.
     -   View the "Super Admin Dashboard".
     -   Monitor a real-time list of ALL transactions across the system, including status and failure reasons.
-<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/5dbc32fe-6ab4-460d-b604-f588d3e08b5c" />
-
-
-
 
 ### API Endpoints (Curl)
 ### System 1 Transaction:
