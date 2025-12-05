@@ -16,6 +16,14 @@ Technology Stack
 -   **Build Tools**: Maven (Backend), npm (Frontend)
 -   **Security**: SHA-256 PIN Hashing, Custom Header-based Inter-service Authentication
 
+Database Credentials (H2)
+-------------------------
+-   **URL**: `jdbc:h2:mem:bankingdb`
+-   **Driver Class**: `org.h2.Driver`
+-   **Username**: `sa`
+-   **Password**: `password`
+-   **Console URL**: `http://localhost:8082/h2-console`
+  
 Prerequisites
 -------------
 -   Java Development Kit (JDK) 17 or higher
