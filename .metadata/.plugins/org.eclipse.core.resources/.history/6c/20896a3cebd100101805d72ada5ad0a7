@@ -1,0 +1,120 @@
+package com.banking.system2.service;
+
+import com.banking.system2.entity.Card;
+import com.banking.system2.entity.TransactionEntity;
+import com.banking.system2.repository.CardRepository;
+import com.banking.system2.repository.TransactionRepository;
+import com.banking.system2.util.HashUtil;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.ArrayList;
+
+@Service
+public class CoreBankingService {
+
+    @Autowired
+    private CardRepository cardRepository;
+
+    @Autowired
+    private TransactionRepository transactionRepository;
+
+    @Transactional
+    public TransactionEntity processTransaction(String cardNumber, String pin, Double amount, String type) {
+        TransactionEntity transaction = new TransactionEntity();
+        transaction.setCardNumber(cardNumber);
+        transaction.setType(type);
+        transaction.setAmount(amount);
+        transaction.setTimestamp(LocalDateTime.now());
+
+        // Validate Transaction Details (Amount, Type)
+        if (amount <= 0) {
+            transaction.setStatus("FAILED");
+            transaction.setFailureReason("Amount must be positive");
+            return transactionRepository.save(transaction);
+        }
+
+        if (!"withdraw".equals(type) && !"topup".equals(type)) {
+            transaction.setStatus("FAILED");
+            transaction.setFailureReason("Invalid transaction type");
+            return transactionRepository.save(transaction);
+        }
+
+        // Validate Card Details (Prefix)
+        if (!cardNumber.startsWith("4")) {
+            transaction.setStatus("FAILED");
+            transaction.setFailureReason("Transactions allowed only for cards starting with 4");
+            return transactionRepository.save(transaction);
+        }
+
+        Optional<Card> cardOpt = cardRepository.findById(cardNumber);
+        if (cardOpt.isEmpty()) {
+            transaction.setStatus("FAILED");
+            transaction.setFailureReason("Invalid card");
+            return transactionRepository.save(transaction);
+        }
+
+        Card card = cardOpt.get();
+
+        String hashedPin = HashUtil.hashPin(pin);
+        if (!card.getPinHash().equals(hashedPin)) {
+            transaction.setStatus("FAILED");
+            transaction.setFailureReason("Invalid PIN");
+            return transactionRepository.save(transaction);
+        }
+
+        // Check and Update Balance
+        if ("withdraw".equals(type)) {
+            if (card.getBalance() < amount) {
+                transaction.setStatus("FAILED");
+                transaction.setFailureReason("System 2: Insufficient balance");
+                return transactionRepository.save(transaction);
+            }
+            card.setBalance(card.getBalance() - amount);
+        } else if ("topup".equals(type)) {
+            card.setBalance(card.getBalance() + amount);
+        }
+
+        cardRepository.save(card);
+        transaction.setStatus("SUCCESS");
+        return transactionRepository.save(transaction);
+    }
+
+    public List<TransactionEntity> getAllTransactions() {
+        return transactionRepository.findAll();
+    }
+
+    public List<TransactionEntity> getTransactionsByUsername(String username) {
+        List<Card> cards = cardRepository.findByUsername(username);
+        List<TransactionEntity> transactions = new ArrayList<>();
+        for (Card card : cards) {
+            transactions.addAll(transactionRepository.findByCardNumber(card.getCardNumber()));
+        }
+        return transactions;
+    }
+
+    public List<Card> getCardsByUsername(String username) {
+        return cardRepository.findByUsername(username);
+    }
+
+    public List<TransactionEntity> getTransactionsByCard(String cardNumber) {
+        return transactionRepository.findByCardNumber(cardNumber);
+    }
+
+    public Card getCard(String cardNumber) {
+        return cardRepository.findById(cardNumber).orElse(null);
+    }
+
+    public Card registerCard(String cardNumber, String pin, Double initialBalance, String username) {
+        if (cardRepository.existsById(cardNumber)) {
+            throw new RuntimeException("Card already exists");
+        }
+        String pinHash = HashUtil.hashPin(pin);
+        Card newCard = new Card(cardNumber, pinHash, initialBalance, username);
+        return cardRepository.save(newCard);
+    }
+}
